@@ -31,7 +31,7 @@ let audioCtx = null;
 // Türkçe Gün ve Ay İsimleri
 const DAYS_TR = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 const MONTHS_TR = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
 ];
 
@@ -349,15 +349,15 @@ let zenHintTimeout = null;
 
 // Minimal Zen Modu
 function toggleZenMode(forceState) {
-  const isZen = typeof forceState === 'boolean'
-    ? document.body.classList.toggle('zen-mode', forceState)
+  const isZen = typeof forceState === 'boolean' 
+    ? document.body.classList.toggle('zen-mode', forceState) 
     : document.body.classList.toggle('zen-mode');
 
   if (isZen) {
     if (zenIconOpen) zenIconOpen.style.display = 'none';
     if (zenIconClose) zenIconClose.style.display = 'block';
     btnZen.setAttribute('title', 'Geri Dön (+ veya Esc)');
-
+    
     // Çıkış ipucunu geçici olarak göster
     if (zenExitHint) {
       zenExitHint.classList.add('show');
@@ -390,7 +390,7 @@ clockHero.addEventListener('click', () => {
 // Tam Ekran
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => { });
+    document.documentElement.requestFullscreen().catch(() => {});
   } else {
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -428,7 +428,7 @@ themeButtons.forEach(btn => {
     themeButtons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const theme = btn.getAttribute('data-theme');
-
+    
     // Var olan temaları temizle
     document.body.className = theme;
     localStorage.setItem('clock_theme', theme);
