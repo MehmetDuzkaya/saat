@@ -31,7 +31,7 @@ let audioCtx = null;
 // Türkçe Gün ve Ay İsimleri
 const DAYS_TR = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 const MONTHS_TR = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
 ];
 
@@ -114,7 +114,7 @@ function updateFavicon(hours, minutes, seconds) {
 /**
  * Saati ve özellikle sekme başlığını (document.title) güncelleyen ana fonksiyon
  */
-function updateClock() {
+function updateClock(forceUpdate = false) {
   const now = new Date();
   const hours = now.getHours();
   const minutes = now.getMinutes();
@@ -130,18 +130,22 @@ function updateClock() {
   // Format: "HH:mm:ss" -> Örn: "14:25:08"
   const timeString = `${hStr}:${mStr}:${sStr}`;
 
-  // Saniye değiştiğinde tetiklenecek işlemler
-  if (seconds !== lastSecond) {
-    // 1. Sekme başlığını saniyesine kadar anında güncelle
+  // 1. Sekme başlığını her halükarda güncelle (farklı uygulamadayken bile asla donmasın)
+  if (document.title !== timeString) {
     document.title = timeString;
+  }
 
+  // Saniye değiştiğinde veya zorunlu güncellemede tetiklenecek işlemler
+  if (seconds !== lastSecond || forceUpdate) {
     // 2. Ekrandaki dijital rakamları güncelle
     if (elHours.textContent !== hStr) elHours.textContent = hStr;
     if (elMinutes.textContent !== mStr) elMinutes.textContent = mStr;
-    elSeconds.textContent = sStr;
+    if (elSeconds.textContent !== sStr) elSeconds.textContent = sStr;
 
     // 3. Önizleme ve sayaç metinleri
-    elTabTitlePreview.textContent = timeString;
+    if (elTabTitlePreview.textContent !== timeString) {
+      elTabTitlePreview.textContent = timeString;
+    }
     elSecondsCounterText.textContent = `${seconds} / 60`;
 
     // 4. Tarih ve Gün (günde bir değişir)
@@ -152,11 +156,18 @@ function updateClock() {
     updateFavicon(hours, minutes, seconds);
 
     // 6. Saniye tik-tak sesi
-    if (lastSecond !== -1) {
+    if (lastSecond !== -1 && !forceUpdate && soundEnabled) {
       playTickSound();
     }
 
     lastSecond = seconds;
+  }
+
+  // Sayfa gizliyse (başka bir uygulamaya geçildiğinde veya sekme arkadayken)
+  // milisaniye ve dairesel SVG hesaplarını atlayarak CPU bütçesini korur.
+  // Bu sayede tarayıcının agresif arka plan kısıtlama mekanizması tetiklenmez.
+  if (document.hidden) {
+    return;
   }
 
   // Milisaniye ekranda akıcı gösterilir
@@ -177,34 +188,139 @@ function updateClock() {
 }
 
 // -------------------------------------------------------------
+// Arka Plan Canlı Tutma Motoru (Inaudible Audio Keep-Alive)
+// Tarayıcıların (Chrome, Safari, Edge) farklı uygulamalara geçildiğinde
+// veya sekmeyi arka plana aldığında zamanlayıcıları ve Web Worker'ı
+// dondurmasını (macOS App Nap & Background Throttling) engelleyen sistem.
+// -------------------------------------------------------------
+const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgYCBgIGAgQ==';
+let keepAliveAudio = null;
+
+function initAudioKeepAlive() {
+  if (keepAliveAudio) return;
+  try {
+    keepAliveAudio = new Audio(SILENT_AUDIO_URI);
+    keepAliveAudio.loop = true;
+    keepAliveAudio.volume = 0.001; // Duyulamaz seviyede, ancak tarayıcıya aktif medya akışı sinyali verir
+  } catch (e) {
+    // Ses nesnesi oluşturulamazsa sessizce geç
+  }
+}
+
+function startAudioKeepAlive() {
+  initAudioKeepAlive();
+  if (keepAliveAudio && keepAliveAudio.paused) {
+    keepAliveAudio.play().catch(() => {
+      // Tarayıcı autoplay politikası ilk tıklamaya kadar izin vermeyebilir
+    });
+  }
+}
+
+// İlk kullanıcı etkileşiminde (tıklama, tuş basımı vb.) canlı tutucuyu başlat
+['click', 'touchstart', 'keydown', 'pointerdown'].forEach((evt) => {
+  window.addEventListener(evt, () => {
+    startAudioKeepAlive();
+  }, { passive: true });
+});
+
+// Sayfa ilk yüklendiğinde de hemen çalıştırmayı dene
+startAudioKeepAlive();
+
+// -------------------------------------------------------------
 // Web Worker ile Arka Planda Kısıtlanmayan Hassas Zaman Takibi
+// (Hem harici dosya hem de file:// için inline Blob worker desteği)
 // -------------------------------------------------------------
 let worker = null;
-try {
-  worker = new Worker('timer-worker.js');
-  worker.onmessage = function (e) {
-    if (e.data && e.data.type === 'tick') {
-      updateClock();
+
+function initWorker() {
+  // 1. Harici dosyadan worker başlatmayı dene
+  try {
+    worker = new Worker('timer-worker.js');
+  } catch (err) {
+    // 2. file:// veya CORS durumunda inline Blob Worker oluşturmayı dene
+    try {
+      const workerBlobCode = `
+        let intervalId = null;
+        self.onmessage = function (e) {
+          if (e.data === 'start') {
+            if (!intervalId) {
+              intervalId = setInterval(function () {
+                self.postMessage({ type: 'tick', timestamp: Date.now() });
+              }, 200);
+            }
+          } else if (e.data === 'stop') {
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+          }
+        };
+      `;
+      const blob = new Blob([workerBlobCode], { type: 'application/javascript' });
+      worker = new Worker(URL.createObjectURL(blob));
+    } catch (e2) {
+      worker = null;
     }
-  };
-  worker.postMessage('start');
-} catch (e) {
-  console.info('Web Worker fallback to local loop');
+  }
+
+  if (worker) {
+    worker.onmessage = function (e) {
+      if (e.data && e.data.type === 'tick') {
+        updateClock();
+      }
+    };
+    worker.postMessage('start');
+  }
 }
+
+initWorker();
 
 // Ana thread animasyon döngüsü (ekranda 60fps pürüzsüz milisaniye için)
 function loop() {
-  updateClock();
+  if (!document.hidden) {
+    updateClock();
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-// Yedek setInterval: Kullanıcı sekmeyi arka plana aldığında requestAnimationFrame yavaşlar,
-// worker yoksa bile setInterval en azından saniyede bir günceller.
-setInterval(updateClock, 200);
+// Tam saniye geçişlerinde tetiklenen hassas zamanlayıcı (drift önleyici)
+function scheduleNextSecondTick() {
+  const now = Date.now();
+  const delay = 1000 - (now % 1000) + 5;
+  setTimeout(() => {
+    updateClock();
+    scheduleNextSecondTick();
+  }, delay);
+}
+scheduleNextSecondTick();
+
+// Yedek setInterval: Kullanıcı sekmeyi arka plana aldığında veya diğer uygulamalara geçtiğinde
+// saniye geçişlerini düzenli olarak kontrol eder
+setInterval(() => {
+  updateClock();
+}, 200);
+
+// Sayfa görünürlüğü ve odak değişimleri:
+// Kullanıcı farklı bir uygulamadan geri döndüğünde veya ekrana tıkladığında
+// saat anında en güncel değere sıfır gecikmeyle eşitlenir
+document.addEventListener('visibilitychange', () => {
+  startAudioKeepAlive();
+  updateClock(true);
+});
+
+window.addEventListener('focus', () => {
+  startAudioKeepAlive();
+  updateClock(true);
+});
+
+window.addEventListener('pageshow', () => {
+  startAudioKeepAlive();
+  updateClock(true);
+});
 
 // İlk yükleme anında hemen güncelle
-updateClock();
+updateClock(true);
 
 // -------------------------------------------------------------
 // Kullanıcı Etkileşimleri (Tema, Zen, Ses, Tam Ekran)
@@ -233,15 +349,15 @@ let zenHintTimeout = null;
 
 // Minimal Zen Modu
 function toggleZenMode(forceState) {
-  const isZen = typeof forceState === 'boolean' 
-    ? document.body.classList.toggle('zen-mode', forceState) 
+  const isZen = typeof forceState === 'boolean'
+    ? document.body.classList.toggle('zen-mode', forceState)
     : document.body.classList.toggle('zen-mode');
 
   if (isZen) {
     if (zenIconOpen) zenIconOpen.style.display = 'none';
     if (zenIconClose) zenIconClose.style.display = 'block';
     btnZen.setAttribute('title', 'Geri Dön (+ veya Esc)');
-    
+
     // Çıkış ipucunu geçici olarak göster
     if (zenExitHint) {
       zenExitHint.classList.add('show');
@@ -274,7 +390,7 @@ clockHero.addEventListener('click', () => {
 // Tam Ekran
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
+    document.documentElement.requestFullscreen().catch(() => { });
   } else {
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -312,7 +428,7 @@ themeButtons.forEach(btn => {
     themeButtons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const theme = btn.getAttribute('data-theme');
-    
+
     // Var olan temaları temizle
     document.body.className = theme;
     localStorage.setItem('clock_theme', theme);

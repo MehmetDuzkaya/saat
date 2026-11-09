@@ -1,15 +1,16 @@
-// Web Worker: Arka plan sekmelerinde bile tarayıcının setInterval kısıtlamasına (throttling) takılmadan
-// saniyenin tam vaktinde title ve saati güncellemesini sağlar.
+// Web Worker: Arka plan sekmelerinde ve diğer uygulamalara geçildiğinde
+// tarayıcının setInterval kısıtlamasına (throttling / App Nap) takılmadan
+// saniyenin tam vaktinde title ve saati kesintisiz güncellemesini sağlar.
 
 let intervalId = null;
 
 self.onmessage = function (e) {
   if (e.data === 'start') {
     if (!intervalId) {
-      // Her 100ms'de kontrol ederek saniye geçişini sıfır gecikmeyle yakalar
+      // 200ms aralıkla kontrol ederek saniye geçişini gecikmesiz yakalar
       intervalId = setInterval(() => {
         self.postMessage({ type: 'tick', timestamp: Date.now() });
-      }, 100);
+      }, 200);
     }
   } else if (e.data === 'stop') {
     if (intervalId) {
