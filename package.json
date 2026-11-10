@@ -1,0 +1,10 @@
+{
+  "name": "dijital-saat",
+  "version": "1.0.0",
+  "description": "Kesintisiz Saniyelik Title ve Minimalist Dijital Saat",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "python3 -m http.server 3000"
+  }
+}
+

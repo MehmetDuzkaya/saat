@@ -6,50 +6,43 @@
   <title>00:00:00</title>
   <meta name="description" content="Title üzerinden saniyesine kadar anlık takip edilebilen hassas dijital saat">
   
-  <!-- Dinamik SVG Favicon (Canlı akrep/yelkovan/saniye çizer) -->
-  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%230f172a' stroke='%2338bdf8' stroke-width='2'/></svg>">
+  <!-- Şeffaf Favicon (Sekme başlığında hiçbir logo/ikon görünmez) -->
+  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>">
   
-  <!-- Modern Fontlar -->
+  <!-- Modern İnce & Zarif Monospace Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@200;300;400;500&display=swap" rel="stylesheet">
   
   <!-- CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="theme-cyan">
-  <!-- Arka plan ambiyans ışıkları -->
-  <div class="ambient-glow glow-1"></div>
-  <div class="ambient-glow glow-2"></div>
+<body>
+  <!-- Hafif teknik arka plan ızgarası -->
   <div class="grid-overlay"></div>
 
   <!-- Ana Kapsayıcı -->
   <main class="app-container" id="app">
     
-    <!-- Üst Kontrol Çubuğu -->
+    <!-- Üst Kontrol Çubuğu (Yalnızca minimal sağ kontroller) -->
     <header class="top-bar">
-      <div class="status-badge" title="Sekme başlığında saniye hassasiyetinde canlı saat aktif">
-        <span class="live-pulse"></span>
-        <span class="badge-text">SEKME BAŞLIĞI AKTİF</span>
-      </div>
-
       <div class="actions-group">
         <button id="btn-sound" class="btn-icon" title="Saniye Tik-Tak Sesi (Aç/Kapat)" aria-label="Saniye sesi">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path id="sound-icon-off" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
             <path id="sound-icon-on" style="display:none;" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
           </svg>
         </button>
 
         <button id="btn-zen" class="btn-icon" title="Minimal Zen Modu (+ veya Z)" aria-label="Zen modu">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path id="zen-icon-open" d="M12 4v16m8-8H4"/>
             <path id="zen-icon-close" style="display:none;" d="M18 6L6 18M6 6l12 12"/>
           </svg>
         </button>
 
         <button id="btn-fullscreen" class="btn-icon" title="Tam Ekran (F)" aria-label="Tam ekran">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
           </svg>
         </button>
@@ -61,89 +54,18 @@
       Geri dönmek için ekrana tıklayın veya <span>Esc</span> / <span>+</span> tuşuna basın
     </div>
 
-    <!-- Saat Kartı -->
+    <!-- Saat Kahraman Alanı (Tamamen ve sadece saat) -->
     <section class="clock-hero">
-      
-      <!-- Saniye Dairesel SVG İlerlemesi -->
-      <div class="radial-progress-wrapper">
-        <svg class="radial-svg" viewBox="0 0 360 360">
-          <circle class="track" cx="180" cy="180" r="160"></circle>
-          <circle id="second-circle" class="progress" cx="180" cy="180" r="160"></circle>
-        </svg>
-
-        <!-- Dijital Saat Ekranı -->
-        <div class="digital-display">
-          <div class="time-segments" id="time-display">
-            <div class="segment segment-hours">
-              <span id="hours" class="digit">00</span>
-              <span class="segment-label">SAAT</span>
-            </div>
-            <span class="colon colon-1">:</span>
-            <div class="segment segment-minutes">
-              <span id="minutes" class="digit">00</span>
-              <span class="segment-label">DAKİKA</span>
-            </div>
-            <span class="colon colon-2">:</span>
-            <div class="segment segment-seconds">
-              <span id="seconds" class="digit accent">00</span>
-              <span class="segment-label">SANİYE</span>
-            </div>
-          </div>
-
-          <!-- Milisaniye göstergesi (opsiyonel hassas akış) -->
-          <div class="sub-seconds" id="milliseconds-wrap">
-            <span class="ms-dot">.</span>
-            <span id="milliseconds">000</span>
-          </div>
-
-          <!-- Tarih ve Gün Bilgisi -->
-          <div class="date-container">
-            <span id="day-name" class="day-name">Pazartesi</span>
-            <span class="date-separator">•</span>
-            <span id="full-date" class="full-date">2 Kasım 2026</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Saniye İlerleme Çizgisi -->
-      <div class="linear-progress-container" title="Dakika içindeki saniye ilerlemesi">
-        <div class="linear-progress-track">
-          <div id="second-bar" class="linear-progress-fill"></div>
-        </div>
-        <div class="progress-labels">
-          <span>00 sn</span>
-          <span id="seconds-counter-text">0 / 60</span>
-          <span>60 sn</span>
+      <div class="digital-display">
+        <div class="time-segments" id="time-display">
+          <span id="hours" class="digit">00</span>
+          <span class="colon colon-1">:</span>
+          <span id="minutes" class="digit">00</span>
+          <span class="colon colon-2">:</span>
+          <span id="seconds" class="digit">00</span>
         </div>
       </div>
     </section>
-
-    <!-- Alt Ayarlar & Seçenekler -->
-    <footer class="bottom-panel">
-      <!-- Title Önizleme Bilgisi -->
-      <div class="title-preview-box">
-        <div class="tab-preview-mockup">
-          <div class="tab-dot"></div>
-          <span class="tab-label">Sekme Başlığı:</span>
-          <span id="tab-title-preview" class="tab-title-code">00:00:00</span>
-          <span class="live-tag">CANLI</span>
-        </div>
-        <p class="tab-hint">Farklı bir sekmeye geçseniz bile sekme başlığınız saniyesi saniyesine güncellenmeye devam eder.</p>
-      </div>
-
-      <!-- Tema Seçimi -->
-      <div class="theme-picker">
-        <span class="theme-label">Görünüm:</span>
-        <div class="theme-buttons">
-          <button class="theme-dot active" data-theme="theme-cyan" style="--c: #38bdf8;" title="Neon Mavi"></button>
-          <button class="theme-dot" data-theme="theme-emerald" style="--c: #10b981;" title="Zümrüt Yeşil"></button>
-          <button class="theme-dot" data-theme="theme-amber" style="--c: #f59e0b;" title="Amber Altın"></button>
-          <button class="theme-dot" data-theme="theme-purple" style="--c: #c084fc;" title="Siber Mor"></button>
-          <button class="theme-dot" data-theme="theme-rose" style="--c: #fb7185;" title="Neon Pembe"></button>
-          <button class="theme-dot" data-theme="theme-mono" style="--c: #ffffff;" title="Saf Minimal"></button>
-        </div>
-      </div>
-    </footer>
   </main>
 
   <script src="app.js"></script>
